@@ -1,21 +1,20 @@
 // openBPMcount — tap-tempo BPM counter & beatmatch assistant for vinyl DJing
 // Target: ideaspark ESP32-WROOM-32 + integrated 0.96" SSD1306 OLED (128x64, I2C)
 //
-// One onboard button (BOOT, GPIO0), three gestures:
-//   SHORT press  (<0.6s)
-//   LONG  press  (0.6s .. 1.6s)
-//   HOLD         (>=1.6s)
+// Three momentary buttons, each wired GPIO -> button -> GND (internal pull-ups,
+// active LOW). No external resistors needed.
+//   TAP  = GPIO27   SWAP = GPIO26   MODE = GPIO25
 //
 // MATCH mode (live beatmatching, two decks A & B):
-//   SHORT -> tap a beat for the ACTIVE deck
-//   LONG  -> lock the active deck and switch to the other deck (A <-> B)
-//   HOLD  -> go to LIBRARY mode
+//   TAP  -> tap a beat for the ACTIVE deck
+//   SWAP -> lock the active deck and switch to the other deck (A <-> B)
+//   MODE -> go to LIBRARY mode
 //
 // LIBRARY mode (stored BPM slots A/B/C, kept in flash for crate digging):
-//   SHORT -> move the cursor to the next slot
-//   LONG  -> store the active deck's current BPM into the cursor slot
-//            (or clear the slot if there's no live reading)
-//   HOLD  -> return to MATCH mode
+//   TAP  -> move the cursor to the next slot
+//   SWAP -> store the active deck's current BPM into the cursor slot
+//           (or clear the slot if there's no live reading)
+//   MODE -> return to MATCH mode
 //
 // The match readout is octave-aware: a record tapped at half/double time still
 // matches, tagged x2 or 1/2, and pitch beyond a turntable's range is flagged.
@@ -28,13 +27,13 @@
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
-static const uint8_t  PIN_BUTTON      = 0;      // onboard BOOT button (active LOW)
+static const uint8_t  PIN_TAP         = 27;     // TAP  button  -> GND
+static const uint8_t  PIN_SWAP        = 26;     // SWAP button  -> GND
+static const uint8_t  PIN_MODE        = 25;     // MODE button  -> GND
 static const uint8_t  OLED_SDA        = 21;     // ideaspark integrated OLED
 static const uint8_t  OLED_SCL        = 22;
 
 static const uint16_t DEBOUNCE_MS     = 25;     // contact debounce
-static const uint16_t LONGPRESS_MS    = 600;    // short -> long threshold
-static const uint16_t HOLD_MS         = 1600;   // long  -> hold threshold
 static const uint32_t IDLE_RESET_MS   = 3000;   // gap that starts a fresh tap run
 static const uint32_t SLEEP_MS        = 120000; // blank the OLED after this idle
 static const uint8_t  MAX_INTERVALS   = 8;      // rolling window for averaging
@@ -59,7 +58,7 @@ struct Deck {
   uint32_t lastTapMs  = 0;      // millis() of the most recent tap
   uint32_t tapCount   = 0;      // total taps in the current run
   float    bpm        = 0.0f;   // current averaged BPM (0 = not measured)
-  bool     locked     = false;  // frozen by a long-press
+  bool     locked     = false;  // frozen by a swap
 
   // Register a beat.
   void tap(uint32_t now) {
@@ -137,43 +136,33 @@ void saveSlot(uint8_t i) {
 }
 
 // ---------------------------------------------------------------------------
-// Button handling — debounce + short / long / hold detection
+// Button handling — one debounced falling-edge detector per button
 // ---------------------------------------------------------------------------
-enum ButtonEvent { BTN_NONE, BTN_SHORT, BTN_LONG, BTN_HOLD };
+struct Button {
+  uint8_t  pin;
+  bool     stable    = false;  // debounced state (true = pressed)
+  bool     raw       = false;
+  uint32_t changedMs = 0;
+  explicit Button(uint8_t p) : pin(p) {}
+};
 
-bool     btnStable    = false;   // debounced logical state (true = pressed)
-bool     btnRaw       = false;
-uint32_t btnChangedMs = 0;
-uint32_t btnDownMs    = 0;
-bool     holdFired    = false;   // hold already emitted for this press
+Button btnTap (PIN_TAP);
+Button btnSwap(PIN_SWAP);
+Button btnMode(PIN_MODE);
 
-ButtonEvent pollButton() {
-  ButtonEvent ev = BTN_NONE;
+// Returns true exactly once, on the press (falling) edge, after debouncing.
+bool pressed(Button& b) {
   uint32_t now = millis();
-
-  bool reading = (digitalRead(PIN_BUTTON) == LOW); // active LOW
-  if (reading != btnRaw) {
-    btnRaw = reading;
-    btnChangedMs = now;
+  bool reading = (digitalRead(b.pin) == LOW); // active LOW
+  if (reading != b.raw) {
+    b.raw = reading;
+    b.changedMs = now;
   }
-
-  if ((now - btnChangedMs) >= DEBOUNCE_MS && reading != btnStable) {
-    btnStable = reading;
-    if (btnStable) {                 // press begins
-      btnDownMs = now;
-      holdFired = false;
-    } else if (!holdFired) {         // release -> short or long
-      uint32_t held = now - btnDownMs;
-      ev = (held >= LONGPRESS_MS) ? BTN_LONG : BTN_SHORT;
-    }
+  if ((now - b.changedMs) >= DEBOUNCE_MS && reading != b.stable) {
+    b.stable = reading;
+    if (b.stable) return true; // just pressed
   }
-
-  // Fire HOLD while still held so it feels responsive; suppress the release.
-  if (btnStable && !holdFired && (now - btnDownMs) >= HOLD_MS) {
-    holdFired = true;
-    ev = BTN_HOLD;
-  }
-  return ev;
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,10 +177,10 @@ float pitchPercent(float from, float to) {
 // Octave-aware match: pick whichever of {other, other*2, other/2} needs the
 // least pitch change, so half/double-time records still line up.
 struct Match {
-  float target;   // effective target BPM after octave choice
-  float pct;      // pitch % to apply to the active deck
+  float  target;  // effective target BPM after octave choice
+  float  pct;     // pitch % to apply to the active deck
   int8_t octave;  // 0 = same, +1 = target doubled, -1 = target halved
-  bool  valid;
+  bool   valid;
 };
 
 Match bestMatch(float activeBpm, float otherBpm) {
@@ -220,7 +209,7 @@ Match bestMatch(float activeBpm, float otherBpm) {
 enum Mode { MODE_MATCH, MODE_LIBRARY };
 Mode     mode           = MODE_MATCH;
 uint32_t lastTapFlashMs = 0;   // brief visual pulse on each tap
-uint32_t lastActivityMs = 0;   // any button event; drives OLED sleep
+uint32_t lastActivityMs = 0;   // any button press; drives OLED sleep
 bool     asleep         = false;
 
 void formatBpm(char* buf, size_t n, float bpm) {
@@ -320,7 +309,7 @@ void drawLibrary() {
   }
 
   u8g2.setFont(u8g2_font_5x8_tf);
-  u8g2.drawStr(0, 64, "SHORT next  LONG store");
+  u8g2.drawStr(0, 64, "TAP:next SWAP:save MODE:back");
 }
 
 void draw() {
@@ -333,7 +322,9 @@ void draw() {
 // ---------------------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
-  pinMode(PIN_BUTTON, INPUT_PULLUP);
+  pinMode(PIN_TAP,  INPUT_PULLUP);
+  pinMode(PIN_SWAP, INPUT_PULLUP);
+  pinMode(PIN_MODE, INPUT_PULLUP);
 
   Wire.begin(OLED_SDA, OLED_SCL);
   u8g2.setI2CAddress(0x3C << 1);
@@ -354,36 +345,44 @@ void setup() {
 }
 
 void loop() {
-  ButtonEvent ev = pollButton();
   uint32_t now = millis();
 
-  if (ev != BTN_NONE) {
+  bool tapHit  = pressed(btnTap);
+  bool swapHit = pressed(btnSwap);
+  bool modeHit = pressed(btnMode);
+  bool anyHit  = tapHit || swapHit || modeHit;
+
+  if (anyHit) {
     lastActivityMs = now;
-    // If the screen was asleep, the wake press only wakes it — don't act on it.
+    // If the screen was asleep, the press only wakes it — don't act on it.
     if (asleep) {
       asleep = false;
       u8g2.setPowerSave(0);
-      ev = BTN_NONE;
+      tapHit = swapHit = modeHit = false;
     }
   }
 
   if (mode == MODE_MATCH) {
-    if (ev == BTN_SHORT) {
+    if (tapHit) {
       active->tap(now);
       lastTapFlashMs = now;
-    } else if (ev == BTN_LONG) {
+    }
+    if (swapHit) {
       if (active->bpm > 0.0f) active->locked = true;
       active = (active == &deckA) ? &deckB : &deckA;
-    } else if (ev == BTN_HOLD) {
+    }
+    if (modeHit) {
       mode = MODE_LIBRARY;
     }
   } else { // MODE_LIBRARY
-    if (ev == BTN_SHORT) {
+    if (tapHit) {
       cursorSlot = (cursorSlot + 1) % NUM_SLOTS;
-    } else if (ev == BTN_LONG) {
+    }
+    if (swapHit) {
       slotBpm[cursorSlot] = active->bpm; // 0 if no live reading -> clears slot
       saveSlot(cursorSlot);
-    } else if (ev == BTN_HOLD) {
+    }
+    if (modeHit) {
       mode = MODE_MATCH;
     }
   }

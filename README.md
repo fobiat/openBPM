@@ -11,39 +11,43 @@ tells you exactly how much pitch to dial in to match your other deck.
 |------|--------|
 | Board | ideaspark ESP32-WROOM-32 (integrated OLED variant) |
 | Display | 0.96" SSD1306 OLED, 128×64, I2C @ `0x3C` (SDA=GPIO21, SCL=GPIO22) |
-| Button | onboard **BOOT** button, GPIO0 (active LOW) |
+| Buttons | 3 × momentary push button — **TAP** GPIO27, **SWAP** GPIO26, **MODE** GPIO25 |
 
-No wiring required — the OLED and button are on the board. Just plug in over USB.
+The OLED is already on the board. Wire three momentary buttons, each between its
+GPIO and **GND** — no resistors needed (the firmware enables internal pull-ups, so
+each pin idles HIGH and reads LOW when pressed):
 
-## Controls (single button, three gestures)
+```
+GPIO27 ──[ TAP  ]── GND
+GPIO26 ──[ SWAP ]── GND
+GPIO25 ──[ MODE ]── GND
+```
 
-The one onboard button reads three press lengths:
+Pins are set at the top of [`src/main.cpp`](src/main.cpp) (`PIN_TAP`, `PIN_SWAP`,
+`PIN_MODE`) — change them there if you wire to different GPIOs. Avoid GPIO 6–11
+(flash), 12 (boot strap), 21/22 (OLED) and 34–39 (no internal pull-up).
 
-| Gesture | Length |
-|---------|--------|
-| **Short** | < 0.6 s |
-| **Long** | 0.6 – 1.6 s |
-| **Hold** | ≥ 1.6 s |
+## Controls
 
-What they do depends on the mode:
+Each button does one thing; what it does depends on the mode:
 
-| | **MATCH mode** (live mixing) | **LIBRARY mode** (stored BPMs) |
-|--|--|--|
-| **Short** | Tap a beat for the active deck | Move cursor to next slot |
-| **Long** | Lock the deck & switch A ⇄ B | Store the live BPM into the slot* |
-| **Hold** | Go to **LIBRARY** | Return to **MATCH** |
+| Button | **MATCH mode** (live mixing) | **LIBRARY mode** (stored BPMs) |
+|--------|------------------------------|--------------------------------|
+| **TAP**  | Tap a beat for the active deck | Move cursor to next slot |
+| **SWAP** | Lock the deck & switch A ⇄ B    | Store the live BPM into the slot* |
+| **MODE** | Go to **LIBRARY**               | Return to **MATCH** |
 
 \* Storing with no live reading clears the slot.
 
 ## How to beatmatch with it
 
-1. Power on — **Deck A** is active. Tap along with the record that's playing.
+1. Power on — **Deck A** is active. **TAP** along with the record that's playing.
    The big number settles on the BPM after a few taps.
-2. **Long-press** to lock Deck A and switch to **Deck B**.
-3. Tap along with the record you're cueing on Deck B.
+2. Press **SWAP** to lock Deck A and switch to **Deck B**.
+3. **TAP** along with the record you're cueing on Deck B.
 4. The bottom line shows the **pitch %** to dial into the active deck plus a
    **SPEED UP / SLOW DN / MATCH** nudge, relative to the other deck.
-5. Long-press any time to hop back to a deck and re-tap it.
+5. Press **SWAP** any time to hop back to a deck and re-tap it.
 
 ```
 ┌──────────────────────────┐
@@ -61,9 +65,10 @@ active deck's pitch fader so it matches the other deck.
 
 ## Memory slots (crate digging)
 
-Three slots — **A / B / C** — live in **LIBRARY mode** (Hold to enter). Measure a
-record in MATCH mode, Hold into LIBRARY, cursor to a slot, and Long-press to store
-it. Slots are written to the ESP32's flash (NVS), so **they survive power-off** —
+Three slots — **A / B / C** — live in **LIBRARY mode** (press **MODE** to enter).
+Measure a record in MATCH mode, press **MODE**, use **TAP** to move the cursor to a
+slot, and **SWAP** to store it. Slots are written to the ESP32's flash (NVS), so
+**they survive power-off** —
 measure a stack of records at the shop and they're still there next time you boot.
 
 ## Smart features
