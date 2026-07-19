@@ -215,6 +215,45 @@ static void test_match_in_range_at_boundary(void) {
 }
 
 // ---------------------------------------------------------------------------
+// Configurable pitch range — decks differ, so what counts as reachable does too
+// ---------------------------------------------------------------------------
+
+static void test_pitch_range_defaults_to_eight(void) {
+  setPitchRange(PITCH_RANGE_PCT);
+  TEST_ASSERT_EQUAL_FLOAT(8.0f, pitchRange());
+}
+
+static void test_pitch_range_is_clamped(void) {
+  setPitchRange(0.0f);
+  TEST_ASSERT_EQUAL_FLOAT(1.0f, pitchRange());    // no sub-1% ranges
+  setPitchRange(999.0f);
+  TEST_ASSERT_EQUAL_FLOAT(50.0f, pitchRange());   // nor absurd ones
+  setPitchRange(PITCH_RANGE_PCT);                 // restore
+}
+
+// A +12% match is unreachable on a Technics but fine on a +/-16% deck.
+static void test_wider_range_makes_match_reachable(void) {
+  setPitchRange(8.0f);
+  TEST_ASSERT_TRUE(computeMatch(114.0f, 128.0f).outOfRange);
+
+  setPitchRange(16.0f);
+  TEST_ASSERT_FALSE(computeMatch(114.0f, 128.0f).outOfRange);
+
+  setPitchRange(PITCH_RANGE_PCT);                 // restore
+}
+
+// ...and a narrower range makes a previously fine match unreachable.
+static void test_narrower_range_makes_match_unreachable(void) {
+  setPitchRange(8.0f);
+  TEST_ASSERT_FALSE(computeMatch(126.0f, 128.0f).outOfRange);  // ~+1.6%
+
+  setPitchRange(1.0f);
+  TEST_ASSERT_TRUE(computeMatch(126.0f, 128.0f).outOfRange);
+
+  setPitchRange(PITCH_RANGE_PCT);                 // restore
+}
+
+// ---------------------------------------------------------------------------
 // Drift timer — the headline feature, so pin the arithmetic down
 // ---------------------------------------------------------------------------
 
@@ -298,6 +337,11 @@ int main(int, char**) {
   RUN_TEST(test_match_picks_smallest_pitch_move);
   RUN_TEST(test_match_flags_out_of_range);
   RUN_TEST(test_match_in_range_at_boundary);
+
+  RUN_TEST(test_pitch_range_defaults_to_eight);
+  RUN_TEST(test_pitch_range_is_clamped);
+  RUN_TEST(test_wider_range_makes_match_reachable);
+  RUN_TEST(test_narrower_range_makes_match_unreachable);
 
   RUN_TEST(test_drift_half_bpm_is_two_minutes);
   RUN_TEST(test_drift_tenth_bpm_is_ten_minutes);

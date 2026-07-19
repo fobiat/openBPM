@@ -64,6 +64,13 @@ struct MatchInfo {
   MatchInfo();
 };
 
+// Turntable pitch range, as +/- a percentage. Decks differ — a Technics 1210 is
+// +/-8, plenty of Pioneers are +/-16, some go wider — and the figure decides
+// when a match is flagged as unreachable, so it's runtime-configurable rather
+// than baked in. Set from the WiFi page; persisted to flash.
+float pitchRange();
+void  setPitchRange(float pct);   // clamped to 1..50
+
 // Pitch % to apply to `from` so it matches `to`: ((to/from) - 1) * 100
 float     pitchPercent(float from, float to);
 // Octave-aware: picks whichever of {other, other*2, other/2} needs least pitch.
@@ -83,4 +90,5 @@ namespace Lib {
   void store(uint8_t i, float bpm);         // 0 clears the slot
   void setName(uint8_t i, const char* name);
   void clear(uint8_t i);
+  void storePitchRange(float pct);          // set + persist the deck's range
 }

@@ -39,10 +39,11 @@ static void drawPitchBar(float pct, bool valid) {
   if (!valid) return;
 
   float clamped = pct;
-  if (clamped >  PITCH_RANGE_PCT) clamped =  PITCH_RANGE_PCT;
-  if (clamped < -PITCH_RANGE_PCT) clamped = -PITCH_RANGE_PCT;
+  const float range = pitchRange();
+  if (clamped >  range) clamped =  range;
+  if (clamped < -range) clamped = -range;
   int16_t span   = (w / 2) - 3;
-  int16_t offset = (int16_t)((clamped / PITCH_RANGE_PCT) * span);
+  int16_t offset = (int16_t)((clamped / range) * span);
   u8g2.drawBox(x + w / 2 + offset - 1, y + 1, 3, h - 2);
 }
 

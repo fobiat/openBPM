@@ -52,10 +52,11 @@ static void drawPitchBar(const UiState& s) {
   if (!s.match.valid) return;
 
   float clamped = s.match.pct;
-  if (clamped >  PITCH_RANGE_PCT) clamped =  PITCH_RANGE_PCT;
-  if (clamped < -PITCH_RANGE_PCT) clamped = -PITCH_RANGE_PCT;
+  const float range = pitchRange();
+  if (clamped >  range) clamped =  range;
+  if (clamped < -range) clamped = -range;
   int16_t span   = (w / 2) - 5;
-  int16_t offset = (int16_t)((clamped / PITCH_RANGE_PCT) * span);
+  int16_t offset = (int16_t)((clamped / range) * span);
   fb.fillRect(x + w / 2 + offset - 3, y + 2, 6, h - 4, matchColour(s.match));
 }
 

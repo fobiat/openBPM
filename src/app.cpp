@@ -103,6 +103,16 @@ MatchInfo::MatchInfo()
   : valid(false), target(0.0f), pct(0.0f), octave(0),
     matched(false), outOfRange(false), driftSec(-1.0f) {}
 
+static float g_pitchRange = PITCH_RANGE_PCT;
+
+float pitchRange() { return g_pitchRange; }
+
+void setPitchRange(float pct) {
+  if (pct < 1.0f)  pct = 1.0f;
+  if (pct > 50.0f) pct = 50.0f;
+  g_pitchRange = pct;
+}
+
 float pitchPercent(float from, float to) {
   if (from <= 0.0f || to <= 0.0f) return 0.0f;
   return ((to / from) - 1.0f) * 100.0f;
@@ -128,7 +138,7 @@ MatchInfo computeMatch(float activeBpm, float otherBpm) {
   float diff   = fabsf(activeBpm - m.target);
   m.valid      = true;
   m.matched    = diff <= MATCH_TOL_BPM;
-  m.outOfRange = fabsf(m.pct) > PITCH_RANGE_PCT;
+  m.outOfRange = fabsf(m.pct) > pitchRange();
 
   // How long until the two decks drift a full beat apart. If they differ by
   // d BPM, they gain one beat on each other every 60/d seconds — i.e. how

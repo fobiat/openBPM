@@ -49,7 +49,9 @@ static void handleRoot() {
          ".b{color:#4ade80;font-variant-numeric:tabular-nums;white-space:nowrap}"
          "input{background:#222;border:1px solid #444;color:#eee;padding:6px;border-radius:4px;width:100%;font-size:15px}"
          "button{background:#2563eb;border:0;color:#fff;padding:7px 12px;border-radius:4px;font-size:14px}"
-         "a{color:#60a5fa}form{display:flex;gap:6px}"
+         "a{color:#60a5fa}form{display:flex;gap:6px;align-items:center}"
+         "h2{font-size:15px;color:#888;font-weight:500;margin:20px 0 8px}"
+         ".hint{color:#666;font-size:13px;margin:6px 0 0}"
          "</style></head><body><h1>openBPM</h1>");
   h += "<div class=live>live: " + bpmText(liveBpm) + " BPM</div>";
   h += F("<table><tr><th>#</th><th>BPM</th><th>Name</th><th></th></tr>");
@@ -69,8 +71,25 @@ static void handleRoot() {
     h += ">clear</a></td></tr>";
   }
 
-  h += F("</table><p><a href=/csv>Download CSV</a></p></body></html>");
+  h += F("</table>");
+
+  // Turntable pitch range — decides when a match is flagged unreachable.
+  h += F("<h2>Deck pitch range</h2>"
+         "<form action=/pitch method=get>"
+         "<input name=v type=number step=0.5 min=1 max=50 value=");
+  h += String(pitchRange(), 1);
+  h += F("><button>Save</button></form>"
+         "<p class=hint>&plusmn;% your decks can shift. "
+         "Technics 1210: 8 &middot; many Pioneers: 16</p>");
+
+  h += F("<p><a href=/csv>Download CSV</a></p></body></html>");
   server.send(200, "text/html", h);
+}
+
+static void handlePitch() {
+  if (server.hasArg("v")) Lib::storePitchRange(server.arg("v").toFloat());
+  server.sendHeader("Location", "/");
+  server.send(303);
 }
 
 static void handleSet() {
@@ -101,7 +120,7 @@ static void handleCsv() {
     csv += Lib::slots[i].name;
     csv += '\n';
   }
-  server.sendHeader("Content-Disposition", "attachment; filename=openbpmcount.csv");
+  server.sendHeader("Content-Disposition", "attachment; filename=openbpm.csv");
   server.send(200, "text/csv", csv);
 }
 
@@ -116,6 +135,7 @@ void start() {
   server.on("/",      handleRoot);
   server.on("/set",   handleSet);
   server.on("/clear", handleClear);
+  server.on("/pitch", handlePitch);
   server.on("/csv",   handleCsv);
   server.begin();
   running = true;

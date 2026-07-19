@@ -37,6 +37,7 @@ void begin() {
     strncpy(slots[i].name, n.c_str(), NAME_LEN - 1);
     slots[i].name[NAME_LEN - 1] = '\0';
   }
+  setPitchRange(prefs.getFloat("prng", PITCH_RANGE_PCT));
 }
 
 void store(uint8_t i, float bpm) {
@@ -64,6 +65,11 @@ void clear(uint8_t i) {
   slots[i].bpm = 0.0f;
   slots[i].name[0] = '\0';
   persist(i);
+}
+
+void storePitchRange(float pct) {
+  setPitchRange(pct);
+  prefs.putFloat("prng", pitchRange());   // store the clamped value
 }
 
 } // namespace Lib
