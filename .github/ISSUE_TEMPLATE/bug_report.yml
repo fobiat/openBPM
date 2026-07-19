@@ -1,0 +1,61 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Hardware details matter a lot here — please fill in what you can.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: board
+    attributes:
+      label: Board / display
+      options:
+        - ideaspark ESP32-WROOM-32 + 1.14" ST7789 colour (env tft)
+        - ideaspark ESP32-WROOM-32 + 0.96" SSD1306 mono (env oled)
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: buttons
+    attributes:
+      label: Buttons
+      options:
+        - Onboard BOOT button only (gestures)
+        - External wired buttons only
+        - Both
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Release tag, or `git rev-parse --short HEAD`
+      placeholder: v1.1.0
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Flash with `pio run -e tft -t upload`
+        2. Tap eight times at roughly 128 BPM
+        3. ...
+
+  - type: textarea
+    id: serial
+    attributes:
+      label: Serial output
+      description: From `pio device monitor` at 115200, if there is any. For button problems, `pio run -e pinscan -t upload` output is especially useful.
+      render: text

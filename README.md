@@ -1,16 +1,27 @@
 # openBPM
 
 [![build](https://github.com/fobiat/openBPM/actions/workflows/build.yml/badge.svg)](https://github.com/fobiat/openBPM/actions/workflows/build.yml)
+[![release](https://img.shields.io/github/v/release/fobiat/openBPM)](https://github.com/fobiat/openBPM/releases/latest)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 A tap-tempo **BPM counter and beatmatch assistant** for vinyl DJing, running on an
 **ideaspark ESP32-WROOM-32**. Tap a button in time with a record and it reads out
 the BPM in big, booth-legible digits — then tells you exactly how much pitch to dial
 in to match your other deck, and how long you've got before they drift apart.
 
-Supports **both** ideaspark display boards from one codebase.
+Roughly **£20–30 of off-the-shelf parts**, no PCB to make, and it runs with **no
+wiring at all** — the board's BOOT button is enough to use it. Supports both ideaspark
+display boards from one codebase.
+
+**Jump to:** [Build one](docs/HARDWARE.md) · [Flash it](#build--flash) ·
+[Controls](#controls) · [Contributing](CONTRIBUTING.md) ·
+[Changelog](CHANGELOG.md) · [Releases](https://github.com/fobiat/openBPM/releases)
 
 ## Hardware
+
+Full parts list, wiring, GPIO reference and enclosure notes are in
+**[docs/HARDWARE.md](docs/HARDWARE.md)**. The short version:
 
 | Part | Detail |
 |------|--------|
@@ -206,10 +217,16 @@ src/
   webui.h / webui.cpp    WiFi AP + phone-facing library page
   main.cpp               buttons, modes, main loop
   pinscan.cpp            standalone button pin scanner (env: pinscan)
+docs/
+  HARDWARE.md            parts list, wiring, GPIO reference, enclosure
 ```
 
 Each display front-end lays the screen out to suit its own size and colour depth;
 the app logic never knows which screen it's driving.
+
+The beatmatch maths in `app.cpp` — tap averaging, octave matching, drift, pitch
+percentages — has no dependency on a screen or a button, so it's the easiest place to
+contribute without hardware.
 
 ## Enclosure
 
@@ -227,6 +244,27 @@ opening it.
 - Battery gauge from the LiPo connector, and deep sleep on long idle
 - Configurable pitch range (±8 % / ±16 %) for different turntables
 
+Fancy building one of these? See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Contributing
+
+Contributions are welcome — bug reports from real hardware especially, since most of
+this has only been verified on one board. Adding a new display is deliberately
+straightforward.
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) — setup, style, how to add a screen
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — be decent to people
+- [Discussions](https://github.com/fobiat/openBPM/discussions) — built one? Show it off
+
+**Built one?** Post it in Discussions — which board, which enclosure, how it felt to
+use. Real-world reports are the most useful thing you can send.
+
+## Credits
+
+Built on [U8g2](https://github.com/olikraus/u8g2) by olikraus,
+[TFT_eSPI](https://github.com/Bodmer/TFT_eSPI) by Bodmer, and the
+[Arduino core for ESP32](https://github.com/espressif/arduino-esp32).
+
 ## Licence
 
-[MIT](LICENSE) © Ohmic Labs
+[MIT](LICENSE) © Ohmic Labs — do what you like with it, including selling them.

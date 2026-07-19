@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest something that would make openBPM more useful
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Ideally framed around actually using it — mixing, crate digging, building one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would it do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Does it need extra hardware?
+      description: e.g. a microphone module, a rotary encoder, a different screen.

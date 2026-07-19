@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Built one? Tell us about it
+    url: https://github.com/fobiat/openBPM/discussions
+    about: Share your build, enclosure, or how it performed in a booth.
