@@ -218,6 +218,15 @@ void begin() {
     fb.setColorDepth(8);
     fbReady = (fb.createSprite(W, H) != NULL);
   }
+
+  // Both allocations failing would otherwise leave a silently black screen,
+  // indistinguishable from a wiring fault. Say what actually went wrong.
+  if (!fbReady) {
+    Serial.println(F("TFT: sprite allocation failed - out of heap"));
+    tft.setTextColor(TFT_RED, TFT_BLACK);
+    tft.drawString("DISPLAY BUFFER", 8, 40, 2);
+    tft.drawString("ALLOC FAILED", 8, 62, 2);
+  }
 }
 
 void splash() {

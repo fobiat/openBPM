@@ -82,8 +82,11 @@ static void renderMatch(const UiState& s) {
   snprintf(line, sizeof(line), "A:%s B:%s", a, b);
   u8g2.drawStr(0, 55, line);
   if (s.jitterMs >= 0.0f) {
-    char j[10];
-    snprintf(j, sizeof(j), "%c%dms", 0xB1, (int)(s.jitterMs + 0.5f));
+    // Plain ASCII rather than a raw 0xB1: drawStr indexes glyphs by byte, so a
+    // font lacking U+00B1 would silently drop the sign. "+/-" always renders,
+    // and matches the TFT front-end.
+    char j[12];
+    snprintf(j, sizeof(j), "+/-%dms", (int)(s.jitterMs + 0.5f));
     u8g2.drawStr(128 - u8g2.getStrWidth(j), 55, j);
   }
 

@@ -41,6 +41,13 @@ void begin() {
 
 void store(uint8_t i, float bpm) {
   if (i >= NUM_SLOTS) return;
+  // Storing with no live reading is how you clear a slot from the device, so
+  // it has to drop the name too — otherwise the slot reads as empty but keeps
+  // the old record's name attached to whatever you store there next.
+  if (bpm <= 0.0f) {
+    clear(i);
+    return;
+  }
   slots[i].bpm = bpm;
   persist(i);
 }
