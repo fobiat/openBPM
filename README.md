@@ -24,14 +24,35 @@ read green/amber/red across a dark booth far faster than you can read digits.
 
 ### Buttons
 
-Every action accepts **several pins at once**, so the board's own buttons and any
-external buttons you wire both work — press whichever is to hand. The pin lists are
-at the top of [`src/main.cpp`](src/main.cpp):
+It works **with no wiring at all**, and gets nicer once you add buttons.
+
+#### No wiring: the onboard BOOT button
+
+The BOOT button drives all three actions by press length, so you can flash the board
+and use it straight away:
+
+| Gesture | Action |
+|---------|--------|
+| **Short** press (< 0.6 s) | TAP |
+| **Long** press (0.6 – 1.6 s) | SWAP |
+| **Hold** (≥ 1.6 s) | MODE |
+
+It's the only onboard button software can read on this board — the others are
+**EN/RST**, which reset the chip in hardware and never reach a GPIO.
+
+#### Better: wire real buttons
+
+Each action also accepts **several pins at once**, so wired buttons and the onboard
+one both work — press whichever is to hand. Tapping a beat on a dedicated button
+beats gesturing on BOOT. The pin lists are at the top of
+[`src/main.cpp`](src/main.cpp):
 
 ```cpp
-static const uint8_t TAP_PINS[]  = {0, 27};   // onboard BOOT, external
-static const uint8_t SWAP_PINS[] = {26};      // external
-static const uint8_t MODE_PINS[] = {25};      // external
+static const uint8_t TAP_PINS[]  = {27};
+static const uint8_t SWAP_PINS[] = {26};
+static const uint8_t MODE_PINS[] = {25};
+
+static const uint8_t GESTURE_PIN = 0;   // onboard BOOT; set 255 to disable
 ```
 
 External buttons go between the GPIO and **GND** — no resistors needed, the firmware
@@ -67,8 +88,13 @@ It prints the GPIO behind each press:
   released  GPIO0
 ```
 
-Put those numbers into the pin lists above and reflash. Pins that never settle are
-floating — ignore them.
+Put those numbers into the pin lists above and reflash.
+
+**Reading the results:** a real button gives clean, paired press/release lines. Pins
+that fire in bursts, change in step with each other, or never settle are **floating**,
+not buttons — GPIO34–39 in particular are input-only with no internal pull-up, so
+they drift. For those the scanner prints a twice-a-second snapshot instead: press and
+**hold** the button and watch for a level that stays put while you're holding it.
 
 **Tip:** make the TAP button physically distinct — bigger, or a different coloured
 cap — so you find it by feel in the dark without looking.

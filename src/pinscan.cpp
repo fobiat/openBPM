@@ -48,16 +48,41 @@ void setup() {
   Serial.println(F("---- ready ----"));
 }
 
+// GPIO34-39 are input-only with no internal pull-up. With nothing driving them
+// they float, drift and cross-talk, which reads exactly like button chatter. A
+// real button holds its level for as long as you hold it and noise doesn't, so
+// for those pins press and HOLD and watch the periodic snapshot instead of the
+// edges.
+static bool inputOnly(uint8_t pin) { return pin >= 34; }
+
+static uint32_t lastSnapshot = 0;
+
 void loop() {
   uint32_t now = millis();
+
   for (uint8_t i = 0; i < N; i++) {
     bool s = digitalRead(SCAN_PINS[i]);
     if (s != lastState[i] && (now - lastChange[i]) > DEBOUNCE_MS) {
       lastState[i]  = s;
       lastChange[i] = now;
+      if (inputOnly(SCAN_PINS[i])) continue;   // too noisy to report per-edge
       Serial.print(s ? F("  released  GPIO") : F("* PRESSED   GPIO"));
       Serial.println(SCAN_PINS[i]);
     }
   }
+
+  // Twice a second, show the input-only pins so a held button stands out.
+  if (now - lastSnapshot > 500) {
+    lastSnapshot = now;
+    Serial.print(F("   [input-only, press+HOLD to test] "));
+    for (uint8_t i = 0; i < N; i++) {
+      if (!inputOnly(SCAN_PINS[i])) continue;
+      Serial.print(F("GPIO"));
+      Serial.print(SCAN_PINS[i]);
+      Serial.print(digitalRead(SCAN_PINS[i]) ? F("=1 ") : F("=0 "));
+    }
+    Serial.println();
+  }
+
   delay(5);
 }

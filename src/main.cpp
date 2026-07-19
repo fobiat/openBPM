@@ -33,12 +33,25 @@
 //   pio run -e pinscan -t upload && pio device monitor
 // then put the pins it reports in the lists below.
 //
-// Note GPIO0 is the onboard BOOT button. It doubles as a boot strapping pin, so
-// holding it while the board powers on enters the bootloader instead of running
-// the firmware — that's normal, just don't hold it through a reset.
-static const uint8_t TAP_PINS[]  = {0, 27};   // onboard BOOT, external
-static const uint8_t SWAP_PINS[] = {26};      // external
-static const uint8_t MODE_PINS[] = {25};      // external
+static const uint8_t TAP_PINS[]  = {27};
+static const uint8_t SWAP_PINS[] = {26};
+static const uint8_t MODE_PINS[] = {25};
+
+// The onboard BOOT button drives all three actions by press length, so the board
+// is fully usable with nothing wired to it at all:
+//   short press -> TAP    long press -> SWAP    hold -> MODE
+//
+// On this board it's the only onboard button software can read; the others are
+// EN/RST, which reset the chip in hardware and never reach a GPIO.
+//
+// GPIO0 is also a boot strapping pin: holding it while the board powers up
+// enters the bootloader instead of running the firmware. That's normal — just
+// don't hold it through a reset.
+//
+// Set to 255 to disable gestures once you have three real buttons wired.
+static const uint8_t  GESTURE_PIN  = 0;
+static const uint16_t LONGPRESS_MS = 600;     // short -> long threshold
+static const uint16_t HOLD_MS      = 1600;    // long  -> hold threshold
 
 static const uint16_t DEBOUNCE_MS  = 25;
 static const uint32_t SLEEP_MS     = 120000;  // blank the screen after this idle
@@ -99,6 +112,62 @@ static ButtonGroup btnSwap(SWAP_PINS, COUNT_OF(SWAP_PINS));
 static ButtonGroup btnMode(MODE_PINS, COUNT_OF(MODE_PINS));
 
 // ---------------------------------------------------------------------------
+// Gesture button — one pin, three actions by press length
+// ---------------------------------------------------------------------------
+enum Gesture { G_NONE, G_SHORT, G_LONG, G_HOLD };
+
+struct GestureButton {
+  uint8_t  pin;
+  bool     stable;
+  bool     raw;
+  uint32_t changedMs;
+  uint32_t downMs;
+  bool     holdFired;   // hold already emitted for this press
+
+  explicit GestureButton(uint8_t p)
+    : pin(p), stable(false), raw(false), changedMs(0), downMs(0),
+      holdFired(false) {}
+
+  bool enabled() const { return pin != 255; }
+
+  void begin() {
+    if (enabled()) pinMode(pin, INPUT_PULLUP);
+  }
+
+  Gesture poll() {
+    if (!enabled()) return G_NONE;
+    uint32_t now = millis();
+    Gesture ev = G_NONE;
+
+    bool reading = (digitalRead(pin) == LOW); // active LOW
+    if (reading != raw) {
+      raw = reading;
+      changedMs = now;
+    }
+
+    if ((now - changedMs) >= DEBOUNCE_MS && reading != stable) {
+      stable = reading;
+      if (stable) {                  // press begins
+        downMs = now;
+        holdFired = false;
+      } else if (!holdFired) {       // release -> short or long
+        ev = ((now - downMs) >= LONGPRESS_MS) ? G_LONG : G_SHORT;
+      }
+    }
+
+    // Fire HOLD while still held so it feels responsive; the release is then
+    // swallowed rather than also counting as a long press.
+    if (stable && !holdFired && (now - downMs) >= HOLD_MS) {
+      holdFired = true;
+      ev = G_HOLD;
+    }
+    return ev;
+  }
+};
+
+static GestureButton btnGesture(GESTURE_PIN);
+
+// ---------------------------------------------------------------------------
 static Deck  deckA;
 static Deck  deckB;
 static Deck* active = &deckA;
@@ -115,6 +184,7 @@ void setup() {
   btnTap.begin();
   btnSwap.begin();
   btnMode.begin();
+  btnGesture.begin();
 
   Lib::begin();
   Display::begin();
@@ -130,6 +200,14 @@ void loop() {
   bool tapHit  = btnTap.pressed();
   bool swapHit = btnSwap.pressed();
   bool modeHit = btnMode.pressed();
+
+  // The onboard button folds into the same three actions by press length.
+  switch (btnGesture.poll()) {
+    case G_SHORT: tapHit  = true; break;
+    case G_LONG:  swapHit = true; break;
+    case G_HOLD:  modeHit = true; break;
+    case G_NONE:  break;
+  }
 
   if (tapHit || swapHit || modeHit) {
     lastActivityMs = now;
