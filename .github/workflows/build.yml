@@ -67,3 +67,27 @@ jobs:
           name: openBPM-${{ matrix.env }}
           path: .pio/build/${{ matrix.env }}/firmware.bin
           if-no-files-found: error
+
+  # Posts the run result to the #openBPM Discord channel. Runs regardless of
+  # whether the gate jobs pass so failures are visible too; skips quietly if
+  # the secret isn't configured (e.g. on forks).
+  notify-discord:
+    if: always()
+    needs: [test, firmware]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Notify Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          RESULT: ${{ contains(needs.*.result, 'failure') && '❌ failed' || '✅ passed' }}
+          COMMIT_MSG: ${{ github.event.head_commit.message || github.event.pull_request.title }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK_URL" ]; then
+            echo "DISCORD_WEBHOOK_URL not set, skipping notification."
+            exit 0
+          fi
+          content="CI $RESULT on \`${{ github.ref_name }}\` (${{ github.event_name }} by ${{ github.actor }}): ${COMMIT_MSG} — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          payload=$(jq -n --arg content "$content" '{content: $content}')
+          curl -fsS -X POST -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL"
