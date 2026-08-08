@@ -27,6 +27,16 @@ export const BASE_SEGMENT = BASE_PATH.replace(/^\/+|\/+$/g, '');
 /** Used to turn links this site cannot resolve into absolute GitHub URLs. */
 export const GITHUB_REPO = 'fobiat/openBPM';
 
+/** Directory, relative to the repo root, that sync-docs.mjs publishes from. */
+export const DOCS_DIR_NAME = 'docs';
+
+/**
+ * Directories under the docs directory copied verbatim into the built site,
+ * and the URL each is served at, for non-Markdown files a document links to.
+ * Nothing here needs one yet.
+ */
+export const ASSET_MOUNTS = [];
+
 /**
  * Paths under docs/ that must never be published, as path prefixes relative to
  * docs/. sync-docs.mjs otherwise publishes everything it finds, so anything

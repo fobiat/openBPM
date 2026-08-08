@@ -20,18 +20,28 @@
  *      to an absolute GitHub URL, so no link 404s.
  */
 
-import { readFile, writeFile, mkdir, rm, readdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, rm, readdir, cp } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { ASTRO_BASE, GITHUB_REPO, DOCS_EXCLUDE } from '../site.config.mjs';
+import {
+  ASTRO_BASE,
+  GITHUB_REPO,
+  DOCS_EXCLUDE,
+  DOCS_DIR_NAME,
+  ASSET_MOUNTS,
+} from '../site.config.mjs';
 
 const WEB_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const REPO_ROOT = resolve(WEB_DIR, '..');
-const DOCS_DIR = join(REPO_ROOT, 'docs');
+const DOCS_DIR = join(REPO_ROOT, DOCS_DIR_NAME ?? 'docs');
 const OUT_DIR = join(WEB_DIR, 'src/content/docs/docs');
+const PUBLIC_DIR = join(WEB_DIR, 'public');
 const GITHUB_BLOB = `https://github.com/${GITHUB_REPO}/blob/main`;
+
+/** Directories copied verbatim into public/, and the URL each is served at. */
+const MOUNTS = ASSET_MOUNTS ?? [];
 
 const BASE = ASTRO_BASE ?? '';
 
@@ -134,7 +144,18 @@ function rewriteLinks(body, rel) {
     const slug = slugBySource.get(target.split(sep).join(sep));
     if (slug !== undefined) return `](${BASE}/docs/${slug}/${anchor})`;
 
-    // Not a synced doc — point at the repo so the link still resolves.
+    // A file inside a mounted directory is served by this site, so link to it
+    // there. This covers the wireframe pages and their screenshots, which are
+    // not Markdown and so are not pages of their own.
+    for (const { from, to } of MOUNTS) {
+      if (target === from || target.startsWith(from + sep)) {
+        const within = target.slice(from.length).split(sep).join('/');
+        return `](${BASE}${to}${within}${anchor})`;
+      }
+    }
+
+    // Not a synced doc and not a published asset — point at the repo so the
+    // link at least resolves for anyone who can see it.
     const repoPath = pathPart.startsWith('/')
       ? pathPart.slice(1)
       : relative(REPO_ROOT, resolve(join(DOCS_DIR, fromDir), pathPart));
@@ -169,4 +190,22 @@ for (const rel of sources) {
   await writeFile(outPath, frontmatter + content);
 }
 
-console.log(`[sync-docs] synced ${sources.length} pages from docs/`);
+// Copy the mounted directories into public/ so the links rewritten above
+// resolve. Markdown is skipped: those files are pages, synced above, and a
+// second copy served as a raw download would be a second URL for one document.
+for (const { from, to } of MOUNTS) {
+  const source = join(DOCS_DIR, from);
+  if (!existsSync(source)) {
+    console.error(`[sync-docs] ASSET_MOUNTS names ${from}, which does not exist.`);
+    process.exit(1);
+  }
+  const target = join(PUBLIC_DIR, to.replace(/^\//, ''));
+  await rm(target, { recursive: true, force: true });
+  await cp(source, target, {
+    recursive: true,
+    filter: (src) => extname(src) !== '.md',
+  });
+  console.log(`[sync-docs] mounted ${from}/ at ${to}/`);
+}
+
+console.log(`[sync-docs] synced ${sources.length} pages from ${DOCS_DIR_NAME ?? 'docs'}/`);
