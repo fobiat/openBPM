@@ -1,0 +1,36 @@
+{
+  // Cloudflare deployment config for the openBPM site.
+  //
+  // Assets-only Worker: there is no `main`, so no Worker code runs and
+  // Cloudflare serves the built `dist/` from its edge. The site is fully
+  // static (Astro + Starlight, prerendered), so a Worker script would only add
+  // an invocation cost for no behaviour.
+  //
+  // Paths are relative to this file, so a Cloudflare Git integration wiring
+  // this repo up must set its *root directory* to `web` and its build command
+  // to `npm run build`.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openbpm",
+  "compatibility_date": "2026-07-25",
+
+  // Mounted at fobiat.dev/openbpm, alongside the other project sites. The
+  // build nests dist/ under `openbpm/` (scripts/nest-base.mjs) so the files
+  // Cloudflare resolves match the URLs Astro emits.
+  //
+  // Two patterns, not one `fobiat.dev/openbpm*`: matching the bare path and
+  // its subtree separately keeps neighbouring projects from colliding as more
+  // are added.
+  "routes": [
+    { "pattern": "fobiat.dev/openbpm", "zone_name": "fobiat.dev" },
+    { "pattern": "fobiat.dev/openbpm/*", "zone_name": "fobiat.dev" },
+  ],
+
+  "assets": {
+    "directory": "./dist",
+    // The build emits a real 404.html (Starlight's), so serve it rather than
+    // Cloudflare's generic 404. Not "single-page-application" — this is a
+    // prerendered multi-page site, and SPA mode would answer every mistyped
+    // docs URL with the landing page and a 200.
+    "not_found_handling": "404-page",
+  },
+}
