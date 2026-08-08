@@ -18,6 +18,11 @@ export default defineConfig({
       title: 'openBPM',
       description:
         'A tap-tempo BPM counter and beatmatch assistant for vinyl DJing on an ESP32.',
+      // Puts the link back to fobiat.dev at the start of the header. Every
+      // project site overrides the same slot with the same component.
+      components: {
+        SiteTitle: './src/components/SiteTitle.astro',
+      },
       social: [
         {
           icon: 'github',

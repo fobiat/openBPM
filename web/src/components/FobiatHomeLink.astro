@@ -1,0 +1,81 @@
+---
+/**
+ * The way back up to fobiat.dev from a project site.
+ *
+ * Every project here is its own Cloudflare Worker mounted at a path
+ * (fobiat.dev/rivet, /openbpm, /applejack, …), so nothing in the page chrome
+ * otherwise points at the site that lists them — a visitor who lands on a docs
+ * page from a search result has no route home short of editing the URL bar.
+ *
+ * This file is byte-identical in every project site, the same way
+ * scripts/nest-base.mjs is: the affordance has to sit in the same place at the
+ * same size on all of them, or it stops reading as one site. Colour is the
+ * deliberate exception — it comes from the Starlight accent tokens, so each
+ * project keeps its own branding while the geometry stays fixed. Change it
+ * here and copy it across, never in one repo alone.
+ *
+ * The link is absolute rather than "/" because these sites are served under a
+ * base path; "/" would resolve to the domain root only by accident of how the
+ * Worker routes are arranged, and would be wrong in any local preview.
+ */
+---
+
+<a class="fobiat-home" href="https://fobiat.dev/" aria-label="Back to fobiat.dev">
+  <svg
+    class="fobiat-home__arrow"
+    viewBox="0 0 16 16"
+    aria-hidden="true"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="M13 8H3.5" />
+    <path d="M7.5 3.5 3 8l4.5 4.5" />
+  </svg>
+  <span class="fobiat-home__label">fobiat.dev</span>
+</a>
+
+<style>
+  .fobiat-home {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex: none;
+    /* Chrome, not content: a step below the site title it sits beside. */
+    font-size: var(--sl-text-xs, 0.8125rem);
+    line-height: 1;
+    white-space: nowrap;
+    text-decoration: none;
+    color: var(--sl-color-gray-3, #8ca39b);
+    transition: color 150ms ease;
+  }
+
+  .fobiat-home:hover,
+  .fobiat-home:focus-visible {
+    color: var(--sl-color-text-accent, #2bb88e);
+  }
+
+  .fobiat-home__arrow {
+    width: 0.9em;
+    height: 0.9em;
+    flex: none;
+  }
+
+  /*
+   * Starlight switches to its narrow header below 50rem, where the title, the
+   * search box and the menu button are already competing for the row. Drop to
+   * the arrow alone there; the aria-label carries the name either way.
+   */
+  @media (max-width: 50rem) {
+    .fobiat-home__label {
+      display: none;
+    }
+
+    .fobiat-home__arrow {
+      width: 1.1em;
+      height: 1.1em;
+    }
+  }
+</style>

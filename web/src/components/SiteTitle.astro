@@ -1,0 +1,50 @@
+---
+/**
+ * Starlight's site title, with the route back to fobiat.dev in front of it.
+ *
+ * Overriding SiteTitle rather than Header is what puts the link in the header
+ * without owning the header: Starlight keeps rendering the search box, the
+ * social icons and the theme toggle itself, and this only claims the slot at
+ * the start of the row. The default title is rendered unchanged after the
+ * link, so a logo, `replacesTitle`, and the localised title href all keep
+ * working.
+ *
+ * The start of the header is where the link belongs — it is the same position
+ * a breadcrumb's root occupies, it is the first thing in the tab order after
+ * the skip link, and it is on every page of the site including 404.
+ *
+ * Byte-identical in every project site. See FobiatHomeLink.astro.
+ */
+import Default from '@astrojs/starlight/components/SiteTitle.astro';
+import FobiatHomeLink from './FobiatHomeLink.astro';
+---
+
+<div class="site-title-group">
+  <FobiatHomeLink />
+  <span class="site-title-group__rule" aria-hidden="true"></span>
+  <Default><slot /></Default>
+</div>
+
+<style>
+  .site-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    /* Matches the default title so a long one still clips instead of pushing
+       the search box off the row. */
+    min-width: 0;
+  }
+
+  .site-title-group__rule {
+    flex: none;
+    width: 1px;
+    height: 1.35em;
+    background: var(--sl-color-gray-5);
+  }
+
+  @media (max-width: 50rem) {
+    .site-title-group {
+      gap: 0.5rem;
+    }
+  }
+</style>
