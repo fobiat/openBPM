@@ -4,6 +4,7 @@
 [![release](https://img.shields.io/github/v/release/fobiat/openBPM)](https://github.com/fobiat/openBPM/releases/latest)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![devlog](https://img.shields.io/badge/devlog-fobiat.dev%2Fblog-1F9E7A)](https://fobiat.dev/blog/p/openbpm)
 
 A tap-tempo **BPM counter and beatmatch assistant** for vinyl DJing, running on an
 **ideaspark ESP32-WROOM-32**. Tap a button in time with a record and it reads out
