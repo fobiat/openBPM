@@ -35,6 +35,8 @@ export default defineConfig({
       // would drift out of sync with it.
       sidebar: [
         { label: 'Documentation', items: [{ autogenerate: { directory: 'docs' } }] },
+        // openBPM's posts plus the blog's untagged ones, not every project's.
+        { label: 'Devlog', link: 'https://fobiat.dev/blog/p/openbpm' },
       ],
       pagination: false,
     }),
