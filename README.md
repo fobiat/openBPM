@@ -211,7 +211,7 @@ parameter rather than calling `millis()` — so a whole tapping session can be
 simulated and the tempo maths tested on a desktop, no board required:
 
 ```bash
-pio test -e native      # 30 unit tests
+pio test -e native      # 34 unit tests
 ```
 
 They cover tap averaging, outlier rejection, idle reset, jitter, beat prediction,
